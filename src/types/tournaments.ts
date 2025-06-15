@@ -1,5 +1,5 @@
 // src/types/tournaments.ts
-// Definizione dei tipi per i tornei
+// Definizione dei tipi corretti per i tornei con UUID
 
 import { PlayerRanking } from './player';
 
@@ -17,11 +17,11 @@ export type TournamentStatus =
   | 'cancelled';
 
 export interface Tournament {
-  id: string;
+  id: string; // UUID as string for frontend compatibility
   name: string;
   description?: string;
   game_type: string;
-  creator_user_id: string;
+  creator_user_id: string; // UUID as string
   target_pool_amount: number;
   current_pool_amount: number;
   tournament_buy_in?: number;
@@ -45,9 +45,9 @@ export interface Tournament {
 }
 
 export interface TournamentInvestment {
-  id: string;
-  tournament_id: string;
-  investor_id: string;
+  id: string; // UUID as string
+  tournament_id: string; // UUID as string
+  investor_id: string; // UUID as string
   amount: number;
   percentage_of_pool: number;
   status: 'active' | 'refunded' | 'paid_out';
@@ -100,3 +100,11 @@ export interface TournamentResponse {
   tournament?: Tournament;
   error?: string;
 }
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+

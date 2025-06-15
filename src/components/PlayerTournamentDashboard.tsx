@@ -1,5 +1,5 @@
 // src/components/PlayerTournamentDashboard.tsx
-// Dashboard per i tornei creati dal giocatore
+// Dashboard corretto per i tornei creati dal giocatore con gestione errori robusta
 
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
@@ -7,29 +7,65 @@ import { Tournament } from '../types/tournaments';
 import { InitialFeePaymentForm } from './InitialFeePaymentForm';
 import { GuaranteePaymentForm } from './GuaranteePaymentForm';
 import { PlayerRankingBadge } from './PlayerRankingBadge';
+import { tournamentService } from '../services/tournamentService';
+import toast from 'react-hot-toast';
 
-export const PlayerTournamentDashboard: React.FC = () => {
+interface PlayerTournamentDashboardProps {
+  className?: string;
+}
+
+export const PlayerTournamentDashboard: React.FC<PlayerTournamentDashboardProps> = ({ 
+  className = "" 
+}) => {
   const supabase = useSupabaseClient();
   const user = useUser();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPlayerTournaments = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('creator_user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setTournaments(data as Tournament[] || []);
+      const userTournaments = await tournamentService.getTournamentsByCreator(user.id);
+      setTournaments(userTournaments);
     } catch (error) {
       console.error('Error fetching player tournaments:', error);
-      // toast.error('Errore nel caricare i tuoi tornei.');
+      setError('Errore nel caricare i tuoi tornei. Riprova più tardi.');
+      toast.error('Errore nel caricare i tuoi tornei');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePaymentComplete = async () => {
+    toast.success('Pagamento completato con successo!');
+    await fetchPlayerTournaments();
+  };
+
+  const handleReportResults = async (tournamentId: string) => {
+    try {
+      // This would open a modal or navigate to a results reporting page
+      toast.info('Funzionalità di report risultati in arrivo');
+    } catch (error) {
+      toast.error('Errore nel riportare i risultati');
+    }
+  };
+
+  const handleCancelTournament = async (tournamentId: string) => {
+    try {
+      const result = await tournamentService.cancelTournament(tournamentId);
+      if (result.success) {
+        await fetchPlayerTournaments();
+      }
+    } catch (error) {
+      toast.error('Errore nella cancellazione del torneo');
     }
   };
 
@@ -37,145 +73,289 @@ export const PlayerTournamentDashboard: React.FC = () => {
     fetchPlayerTournaments();
   }, [user]);
 
-  if (isLoading) return <div>Caricamento tornei...</div>;
-  if (!user) return <div>Devi essere loggato per vedere i tuoi tornei.</div>;
-  if (tournaments.length === 0) return <div>Non hai ancora creato nessun torneo.</div>;
+  if (isLoading) {
+    return (
+      <div className={`flex items-center justify-center p-8 ${className}`}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        <span className="ml-2 text-gray-300">Caricamento tornei...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={`text-center p-8 ${className}`}>
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          <p className="text-yellow-400">Devi essere loggato per vedere i tuoi tornei.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`text-center p-8 ${className}`}>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+          <p className="text-red-400">{error}</p>
+          <button 
+            onClick={fetchPlayerTournaments}
+            className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+          >
+            Riprova
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (tournaments.length === 0) {
+    return (
+      <div className={`text-center p-8 ${className}`}>
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
+          <h3 className="text-xl font-semibold text-white mb-2">Nessun torneo creato</h3>
+          <p className="text-gray-400 mb-4">Non hai ancora creato nessun torneo.</p>
+          <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+            Crea il tuo primo torneo
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="player-tournament-dashboard" style={{
+    <div className={`player-tournament-dashboard ${className}`} style={{
       backgroundColor: '#1e1e2e',
       padding: '20px',
       borderRadius: '12px'
     }}>
-      <h2 style={{ color: '#fff' }}>I Miei Tornei Creati</h2>
-      {tournaments.map(tournament => (
-        <div key={tournament.id} style={{
-          backgroundColor: '#252538',
-          padding: '15px',
-          marginBottom: '15px',
-          borderRadius: '8px',
-          color: '#e0e0e0'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ color: '#fff', margin: '0' }}>{tournament.name}</h3>
-            <span style={{
-              display: 'inline-block',
-              padding: '3px 8px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              color: 'white',
-              backgroundColor: getStatusColor(tournament.status)
-            }}>
-              {formatStatus(tournament.status)}
-            </span>
-          </div>
-          
-          <div style={{ marginTop: '10px' }}>
-            <PlayerRankingBadge ranking={tournament.player_ranking_at_creation} />
-          </div>
-          
-          <p>Target Pool: {tournament.target_pool_amount} SOL</p>
-          <p>Pool Attuale: {tournament.current_pool_amount} SOL</p>
-          
-          {/* Barra di progresso per la pool */}
-          <div style={{
-            height: '10px',
-            backgroundColor: '#3e3e4f',
-            borderRadius: '5px',
-            margin: '10px 0',
-            overflow: 'hidden'
-          }}>
-            <div 
-              style={{
-                height: '100%',
-                backgroundColor: '#7e3af2',
-                borderRadius: '5px',
-                transition: 'width 0.3s ease-in-out',
-                width: `${Math.min(100, (tournament.current_pool_amount / tournament.target_pool_amount) * 100)}%`
-              }}
-            ></div>
-          </div>
-
-          {/* Dettagli Commissione Iniziale */} 
-          <p>Commissione Iniziale: {tournament.initial_platform_fee_amount.toFixed(2)} SOL ({tournament.initial_platform_fee_pct * 100}%) - {tournament.initial_platform_fee_paid ? 'Pagata' : 'Da Pagare'}</p>
-          {tournament.status === 'pending_initial_payment' && !tournament.initial_platform_fee_paid && (
-            <InitialFeePaymentForm 
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              targetPoolAmount={tournament.target_pool_amount}
-              playerRanking={tournament.player_ranking_at_creation}
-              initialFeeAmount={tournament.initial_platform_fee_amount}
-              onPaymentComplete={fetchPlayerTournaments} 
-            />
-          )}
-
-          {/* Dettagli Garanzia */} 
-          <p>Garanzia Richiesta: {tournament.player_guarantee_amount_required.toFixed(2)} SOL ({tournament.player_guarantee_pct * 100}%) - {tournament.player_guarantee_paid ? 'Depositata' : 'Da Depositare'}</p>
-          {tournament.status === 'pending_guarantee' && !tournament.player_guarantee_paid && (
-            <GuaranteePaymentForm 
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              targetPoolAmount={tournament.target_pool_amount}
-              playerRanking={tournament.player_ranking_at_creation}
-              onPaymentComplete={fetchPlayerTournaments} 
-            />
-          )}
-          
-          {/* Altre azioni e informazioni in base allo stato del torneo */} 
-          {tournament.status === 'awaiting_results' && (
-            <button style={{
-              backgroundColor: '#7e3af2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '10px 16px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginTop: '10px'
-            }}>
-              Riporta Risultati
-            </button>
-          )}
-
-          <hr style={{ borderColor: '#3e3e4f', marginTop: '20px' }} />
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-white">I Miei Tornei Creati</h2>
+        <div className="text-sm text-gray-400">
+          {tournaments.length} torneo{tournaments.length !== 1 ? 'i' : ''}
         </div>
-      ))}
+      </div>
+
+      <div className="space-y-4">
+        {tournaments.map(tournament => (
+          <TournamentCard
+            key={tournament.id}
+            tournament={tournament}
+            onPaymentComplete={handlePaymentComplete}
+            onReportResults={handleReportResults}
+            onCancelTournament={handleCancelTournament}
+          />
+        ))}
+      </div>
     </div>
   );
 };
 
-// Funzioni di utilità
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'funding_open': return '#28a745'; // Verde
-    case 'pending_initial_payment':
-    case 'pending_guarantee': return '#ffc107'; // Giallo
-    case 'funding_complete': return '#17a2b8'; // Ciano
-    case 'funds_transferred_to_player':
-    case 'in_progress': return '#007bff'; // Blu
-    case 'awaiting_results': return '#6f42c1'; // Viola
-    case 'completed_won': return '#28a745'; // Verde
-    case 'completed_lost': return '#dc3545'; // Rosso
-    case 'funding_failed':
-    case 'cancelled': return '#6c757d'; // Grigio
-    default: return '#6c757d'; // Grigio
-  }
+interface TournamentCardProps {
+  tournament: Tournament;
+  onPaymentComplete: () => void;
+  onReportResults: (tournamentId: string) => void;
+  onCancelTournament: (tournamentId: string) => void;
 }
 
-function formatStatus(status: string): string {
-  switch (status) {
-    case 'pending_initial_payment': return 'In attesa di commissione';
-    case 'pending_guarantee': return 'In attesa di garanzia';
-    case 'funding_open': return 'Raccolta fondi aperta';
-    case 'funding_complete': return 'Raccolta fondi completata';
-    case 'funds_transferred_to_player': return 'Fondi trasferiti';
-    case 'in_progress': return 'In corso';
-    case 'awaiting_results': return 'In attesa di risultati';
-    case 'completed_won': return 'Completato (Vinto)';
-    case 'completed_lost': return 'Completato (Perso)';
-    case 'funding_failed': return 'Raccolta fondi fallita';
-    case 'cancelled': return 'Annullato';
-    default: return status.replace(/_/g, ' ');
-  }
+const TournamentCard: React.FC<TournamentCardProps> = ({
+  tournament,
+  onPaymentComplete,
+  onReportResults,
+  onCancelTournament
+}) => {
+  const progressPercentage = Math.min(100, (tournament.current_pool_amount / tournament.target_pool_amount) * 100);
+
+  return (
+    <div style={{
+      backgroundColor: '#252538',
+      padding: '20px',
+      borderRadius: '12px',
+      border: '1px solid #3e3e4f'
+    }}>
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-semibold text-white mb-2">{tournament.name}</h3>
+          {tournament.description && (
+            <p className="text-gray-400 text-sm">{tournament.description}</p>
+          )}
+        </div>
+        <StatusBadge status={tournament.status} />
+      </div>
+
+      {/* Ranking Badge */}
+      <div className="mb-4">
+        <PlayerRankingBadge ranking={tournament.player_ranking_at_creation} />
+      </div>
+
+      {/* Pool Information */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <p className="text-gray-400 text-sm">Target Pool</p>
+          <p className="text-white font-semibold">{tournament.target_pool_amount} SOL</p>
+        </div>
+        <div>
+          <p className="text-gray-400 text-sm">Pool Attuale</p>
+          <p className="text-white font-semibold">{tournament.current_pool_amount} SOL</p>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-gray-400 mb-1">
+          <span>Progresso Raccolta Fondi</span>
+          <span>{progressPercentage.toFixed(1)}%</span>
+        </div>
+        <div style={{
+          height: '8px',
+          backgroundColor: '#3e3e4f',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}>
+          <div 
+            style={{
+              height: '100%',
+              backgroundColor: '#7e3af2',
+              borderRadius: '4px',
+              transition: 'width 0.3s ease-in-out',
+              width: `${progressPercentage}%`
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Fee Information */}
+      <div className="space-y-2 mb-4">
+        <FeeInfo
+          label="Commissione Iniziale"
+          amount={tournament.initial_platform_fee_amount}
+          percentage={tournament.initial_platform_fee_pct * 100}
+          paid={tournament.initial_platform_fee_paid}
+        />
+        <FeeInfo
+          label="Garanzia Richiesta"
+          amount={tournament.player_guarantee_amount_required}
+          percentage={tournament.player_guarantee_pct * 100}
+          paid={tournament.player_guarantee_paid}
+        />
+      </div>
+
+      {/* Action Buttons */}
+      <div className="space-y-3">
+        {tournament.status === 'pending_initial_payment' && !tournament.initial_platform_fee_paid && (
+          <InitialFeePaymentForm 
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            targetPoolAmount={tournament.target_pool_amount}
+            playerRanking={tournament.player_ranking_at_creation}
+            initialFeeAmount={tournament.initial_platform_fee_amount}
+            onPaymentComplete={onPaymentComplete} 
+          />
+        )}
+
+        {tournament.status === 'pending_guarantee' && !tournament.player_guarantee_paid && (
+          <GuaranteePaymentForm 
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            targetPoolAmount={tournament.target_pool_amount}
+            playerRanking={tournament.player_ranking_at_creation}
+            onPaymentComplete={onPaymentComplete} 
+          />
+        )}
+
+        {tournament.status === 'awaiting_results' && (
+          <button 
+            onClick={() => onReportResults(tournament.id)}
+            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+          >
+            Riporta Risultati
+          </button>
+        )}
+
+        {['pending_initial_payment', 'pending_guarantee', 'funding_open'].includes(tournament.status) && (
+          <button 
+            onClick={() => onCancelTournament(tournament.id)}
+            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+          >
+            Cancella Torneo
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface StatusBadgeProps {
+  status: string;
 }
+
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'funding_open': 
+        return { color: '#28a745', text: 'Raccolta Aperta' };
+      case 'pending_initial_payment':
+        return { color: '#ffc107', text: 'In attesa di commissione' };
+      case 'pending_guarantee': 
+        return { color: '#ffc107', text: 'In attesa di garanzia' };
+      case 'funding_complete': 
+        return { color: '#17a2b8', text: 'Raccolta Completata' };
+      case 'funds_transferred_to_player':
+      case 'in_progress': 
+        return { color: '#007bff', text: 'In Corso' };
+      case 'awaiting_results': 
+        return { color: '#6f42c1', text: 'In attesa di risultati' };
+      case 'completed_won': 
+        return { color: '#28a745', text: 'Completato (Vinto)' };
+      case 'completed_lost': 
+        return { color: '#dc3545', text: 'Completato (Perso)' };
+      case 'funding_failed':
+      case 'cancelled': 
+        return { color: '#6c757d', text: 'Cancellato' };
+      default: 
+        return { color: '#6c757d', text: status.replace(/_/g, ' ') };
+    }
+  };
+
+  const config = getStatusConfig(status);
+
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '12px',
+      fontWeight: '600',
+      color: 'white',
+      backgroundColor: config.color
+    }}>
+      {config.text}
+    </span>
+  );
+};
+
+interface FeeInfoProps {
+  label: string;
+  amount: number;
+  percentage: number;
+  paid: boolean;
+}
+
+const FeeInfo: React.FC<FeeInfoProps> = ({ label, amount, percentage, paid }) => (
+  <div className="flex justify-between items-center text-sm">
+    <span className="text-gray-400">{label}:</span>
+    <div className="text-right">
+      <span className="text-white font-medium">
+        {amount.toFixed(2)} SOL ({percentage.toFixed(1)}%)
+      </span>
+      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+        paid 
+          ? 'bg-green-500/20 text-green-400' 
+          : 'bg-yellow-500/20 text-yellow-400'
+      }`}>
+        {paid ? 'Pagato' : 'Da Pagare'}
+      </span>
+    </div>
+  </div>
+);
+
