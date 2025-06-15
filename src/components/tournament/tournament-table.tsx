@@ -1,94 +1,70 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTable, useSortBy, usePagination } from 'react-table';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import cn from '@/utils/cn';
+import { apiService, Tournament } from '@/services/apiService';
 
-const tournamentData = [
-  {
-    id: 1,
-    name: 'Sunday Million',
-    organizer: 'PokerPro',
-    buyIn: 215,
-    prizePool: 1000000,
-    startTime: '2025-06-08T20:00:00Z',
-    status: 'upcoming',
-    participants: 4500,
-    maxParticipants: 5000,
-    investmentPool: 250000,
-    minInvestment: 100,
-    expectedROI: 18.5,
-    riskLevel: 'medium',
-    organizerRating: 4.8,
-  },
-  {
-    id: 2,
-    name: 'High Roller Championship',
-    organizer: 'ChampionAce',
-    buyIn: 5000,
-    prizePool: 2500000,
-    startTime: '2025-06-10T18:00:00Z',
-    status: 'upcoming',
-    participants: 450,
-    maxParticipants: 500,
-    investmentPool: 500000,
-    minInvestment: 500,
-    expectedROI: 25.2,
-    riskLevel: 'high',
-    organizerRating: 4.9,
-  },
-  {
-    id: 3,
-    name: 'Daily Grind Series',
-    organizer: 'TourneyKing',
-    buyIn: 55,
-    prizePool: 100000,
-    startTime: '2025-06-07T19:00:00Z',
-    status: 'live',
-    participants: 1800,
-    maxParticipants: 2000,
-    investmentPool: 75000,
-    minInvestment: 50,
-    expectedROI: 12.8,
-    riskLevel: 'low',
-    organizerRating: 4.6,
-  },
-  {
-    id: 4,
-    name: 'Micro Stakes Marathon',
-    organizer: 'MicroMaster',
-    buyIn: 11,
-    prizePool: 25000,
-    startTime: '2025-06-09T16:00:00Z',
-    status: 'upcoming',
-    participants: 2200,
-    maxParticipants: 2500,
-    investmentPool: 15000,
-    minInvestment: 25,
-    expectedROI: 8.5,
-    riskLevel: 'low',
-    organizerRating: 4.4,
-  },
-  {
-    id: 5,
-    name: 'Bounty Hunter Special',
-    organizer: 'BountyHunter',
-    buyIn: 320,
-    prizePool: 500000,
-    startTime: '2025-06-11T21:00:00Z',
-    status: 'upcoming',
-    participants: 1500,
-    maxParticipants: 1600,
-    investmentPool: 120000,
-    minInvestment: 150,
-    expectedROI: 22.1,
-    riskLevel: 'medium',
-    organizerRating: 4.7,
-  },
-];
+interface TournamentTableData {
+  id: string;
+  name: string;
+  organizer: string;
+  buyIn: number;
+  prizePool: number;
+  startTime: string;
+  status: string;
+  participants: number;
+  maxParticipants: number;
+  investmentPool: number;
+  minInvestment: number;
+  expectedROI: number;
+  riskLevel: string;
+  organizerRating: number;
+}
 
 export default function TournamentTable() {
+  const [tournaments, setTournaments] = useState<TournamentTableData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadTournaments();
+  }, []);
+
+  const loadTournaments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const apiTournaments = await apiService.getTournaments();
+      
+      // Trasforma i dati API nel formato richiesto dalla tabella
+      const transformedData: TournamentTableData[] = apiTournaments.map((tournament) => ({
+        id: tournament.id,
+        name: tournament.name,
+        organizer: 'Unknown Organizer', // TODO: Aggiungere organizer al backend
+        buyIn: parseFloat(tournament.buy_in),
+        prizePool: parseFloat(tournament.total_prize),
+        startTime: tournament.start_date,
+        status: tournament.status,
+        participants: 0, // TODO: Aggiungere participants al backend
+        maxParticipants: tournament.max_participants || 0,
+        investmentPool: parseFloat(tournament.total_prize) * 0.1, // 10% del prize pool
+        minInvestment: Math.max(parseFloat(tournament.buy_in) * 0.1, 25), // 10% del buy-in, minimo $25
+        expectedROI: Math.random() * 20 + 5, // TODO: Calcolo ROI reale
+        riskLevel: parseFloat(tournament.buy_in) > 1000 ? 'high' : parseFloat(tournament.buy_in) > 100 ? 'medium' : 'low',
+        organizerRating: 4.0 + Math.random() * 1, // TODO: Rating reale organizer
+      }));
+
+      setTournaments(transformedData);
+    } catch (err) {
+      console.error('Error loading tournaments:', err);
+      setError('Failed to load tournaments. Please try again.');
+      setTournaments([]); // Mostra lista vuota in caso di errore
+    } finally {
+      setLoading(false);
+    }
+  };
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -231,12 +207,84 @@ export default function TournamentTable() {
   } = useTable(
     {
       columns,
-      data: tournamentData,
+      data: tournaments, // Usa i dati reali dal backend
       initialState: { pageIndex: 0, pageSize: 10 },
     },
     useSortBy,
     usePagination
   );
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Available Tournaments
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Loading tournaments...
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Available Tournaments
+          </h3>
+          <p className="text-sm text-red-500">
+            {error}
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <button
+            onClick={loadTournaments}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (tournaments.length === 0) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Available Tournaments
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No tournaments available at the moment
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              No tournaments found. Check back later!
+            </p>
+            <button
+              onClick={loadTournaments}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
