@@ -111,32 +111,34 @@ export default function TournamentCard({ tournament, className }: TournamentCard
         </div>
 
         {/* Tournament Details */}
-        <div className="p-4">
-          <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Buy-in</span>
-              <div className="font-semibold text-gray-900 dark:text-white">
+        <div className="p-4 space-y-4">
+          {/* Row 1: Buy-in and Players */}
+          <div className="flex justify-between items-start">
+            <div className="flex-1 min-w-0">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Buy-in</span>
+              <div className="font-semibold text-gray-900 dark:text-white text-sm">
                 {formatCurrency(tournament.buyIn)}
               </div>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Players</span>
-              <div className="font-semibold text-gray-900 dark:text-white">
+            <div className="flex-1 min-w-0 text-right">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Players</span>
+              <div className="font-semibold text-gray-900 dark:text-white text-sm">
                 {tournament.participants.toLocaleString()}/{tournament.maxParticipants.toLocaleString()}
               </div>
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Expected ROI</span>
-              <div className="font-semibold text-green-500">
+          {/* Row 2: ROI and Risk */}
+          <div className="flex justify-between items-start">
+            <div className="flex-1 min-w-0">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">ROI</span>
+              <div className="font-semibold text-green-500 text-sm">
                 +{tournament.expectedROI}%
               </div>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Risk Level</span>
-              <div>
+            <div className="flex-1 min-w-0 text-right">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Risk</span>
+              <div className="flex justify-end">
                 <span className={cn(
                   'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium',
                   getRiskColor(tournament.riskLevel)
@@ -147,28 +149,30 @@ export default function TournamentCard({ tournament, className }: TournamentCard
             </div>
           </div>
 
-          <div className="mb-4 text-sm">
-            <span className="text-gray-500 dark:text-gray-400">Investment Pool</span>
-            <div className="font-semibold text-gray-900 dark:text-white">
+          {/* Investment Pool */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Investment Pool</span>
+            <div className="font-semibold text-gray-900 dark:text-white text-sm">
               {formatCurrency(tournament.investmentPool)}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mt-1">
               Min. investment: {formatCurrency(tournament.minInvestment)}
             </div>
           </div>
 
-          <div className="mb-4 text-sm">
-            <span className="text-gray-500 dark:text-gray-400">Starts</span>
-            <div className="font-semibold text-gray-900 dark:text-white">
+          {/* Start Time */}
+          <div>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Starts</span>
+            <div className="font-semibold text-gray-900 dark:text-white text-sm">
               {timeToStart}
             </div>
           </div>
 
           {/* Organizer Rating */}
-          <div className="mb-4 flex items-center justify-between text-sm">
-            <span className="text-gray-500 dark:text-gray-400">Organizer Rating</span>
-            <div className="flex items-center space-x-1">
-              <span className="font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Organizer Rating</span>
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-gray-900 dark:text-white text-sm">
                 {tournament.organizerRating}
               </span>
               <div className="flex">
@@ -196,7 +200,7 @@ export default function TournamentCard({ tournament, className }: TournamentCard
             onClick={() => tournament.status !== 'completed' ? setShowInvestModal(true) : null}
             disabled={tournament.status === 'completed'}
             className={cn(
-              'w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              'w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors mt-4',
               tournament.status === 'completed'
                 ? 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600'
                 : 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
