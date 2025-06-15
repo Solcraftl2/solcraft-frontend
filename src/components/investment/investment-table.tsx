@@ -1,75 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTable, useSortBy, usePagination } from 'react-table';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import cn from '@/utils/cn';
+import { apiService } from '@/services/apiService';
 
-const investmentData = [
-  {
-    id: 1,
-    tournament: 'Sunday Million',
-    organizer: 'PokerPro',
-    amount: 1500,
-    investmentDate: '2025-06-01T10:00:00Z',
-    status: 'active',
-    currentValue: 1650,
-    roi: 10.0,
-    expectedPayout: '2025-06-08T23:00:00Z',
-    riskLevel: 'medium',
-  },
-  {
-    id: 2,
-    tournament: 'High Roller Championship',
-    organizer: 'ChampionAce',
-    amount: 5000,
-    investmentDate: '2025-05-28T14:30:00Z',
-    status: 'active',
-    currentValue: 5750,
-    roi: 15.0,
-    expectedPayout: '2025-06-10T22:00:00Z',
-    riskLevel: 'high',
-  },
-  {
-    id: 3,
-    tournament: 'Daily Grind Series',
-    organizer: 'TourneyKing',
-    amount: 500,
-    investmentDate: '2025-06-05T09:15:00Z',
-    status: 'completed',
-    currentValue: 580,
-    roi: 16.0,
-    expectedPayout: '2025-06-07T22:30:00Z',
-    riskLevel: 'low',
-  },
-  {
-    id: 4,
-    tournament: 'Micro Stakes Marathon',
-    organizer: 'MicroMaster',
-    amount: 250,
-    investmentDate: '2025-06-03T16:45:00Z',
-    status: 'active',
-    currentValue: 275,
-    roi: 10.0,
-    expectedPayout: '2025-06-09T20:00:00Z',
-    riskLevel: 'low',
-  },
-  {
-    id: 5,
-    tournament: 'Bounty Hunter Special',
-    organizer: 'BountyHunter',
-    amount: 2000,
-    investmentDate: '2025-06-04T11:20:00Z',
-    status: 'pending',
-    currentValue: 2000,
-    roi: 0.0,
-    expectedPayout: '2025-06-11T23:30:00Z',
-    riskLevel: 'medium',
-  },
-];
+interface Investment {
+  id: string;
+  tournament: string;
+  organizer: string;
+  amount: number;
+  investmentDate: string;
+  status: string;
+  currentValue: number;
+  roi: number;
+  expectedPayout: string;
+  riskLevel: string;
+}
 
 export default function InvestmentTable() {
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    loadInvestments();
+  }, []);
+
+  const loadInvestments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // TODO: Implementare endpoint per gli investimenti dell'utente
+      // Per ora mostra array vuoto per utente nuovo
+      setInvestments([]);
+    } catch (err) {
+      console.error('Error loading investments:', err);
+      setError('Failed to load investments. Please try again.');
+      setInvestments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -259,17 +234,102 @@ export default function InvestmentTable() {
   } = useTable(
     {
       columns,
-      data: investmentData,
+      data: investments, // Usa i dati reali dal backend
       initialState: { pageIndex: 0, pageSize: 10 },
     },
     useSortBy,
     usePagination
   );
 
-  // Calculate totals
-  const totalInvested = investmentData.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalCurrentValue = investmentData.reduce((sum, inv) => sum + inv.currentValue, 0);
-  const totalROI = ((totalCurrentValue - totalInvested) / totalInvested) * 100;
+  // Calculate totals from real data
+  const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalCurrentValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+  const totalROI = totalInvested > 0 ? ((totalCurrentValue - totalInvested) / totalInvested) * 100 : 0;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            My Investments
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Loading your investments...
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            My Investments
+          </h3>
+          <p className="text-sm text-red-500">
+            {error}
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <button
+            onClick={loadInvestments}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state for new users
+  if (investments.length === 0) {
+    return (
+      <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                My Investments
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Track your tournament investments and returns
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Total Portfolio</div>
+              <div className="text-xl font-bold text-gray-900 dark:text-white">
+                $0
+              </div>
+              <div className="text-sm font-medium text-gray-500">
+                0.0% ROI
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              You haven't made any investments yet. Start by investing in a tournament!
+            </p>
+            <button
+              onClick={loadInvestments}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
