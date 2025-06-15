@@ -1,11 +1,23 @@
-'use client';
-
 import { useState } from 'react';
-import { useTable, useSortBy, usePagination } from 'react-table';
+import { useTable, useSortBy, usePagination, Column } from 'react-table';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import cn from '@/utils/cn';
 
-const investmentData = [
+// Define the investment data type
+interface InvestmentData {
+  id: number;
+  tournament: string;
+  organizer: string;
+  amount: number;
+  investmentDate: string;
+  status: string;
+  currentValue: number;
+  roi: number;
+  expectedPayout: string;
+  riskLevel: string;
+}
+
+const investmentData: InvestmentData[] = [
   {
     id: 1,
     tournament: 'Sunday Million',
@@ -48,9 +60,9 @@ const investmentData = [
     organizer: 'MicroMaster',
     amount: 250,
     investmentDate: '2025-06-03T16:45:00Z',
-    status: 'active',
-    currentValue: 275,
-    roi: 10.0,
+    status: 'pending',
+    currentValue: 250,
+    roi: 0.0,
     expectedPayout: '2025-06-09T20:00:00Z',
     riskLevel: 'low',
   },
@@ -59,11 +71,11 @@ const investmentData = [
     tournament: 'Bounty Hunter Special',
     organizer: 'BountyHunter',
     amount: 2000,
-    investmentDate: '2025-06-04T11:20:00Z',
-    status: 'pending',
+    investmentDate: '2025-05-30T12:00:00Z',
+    status: 'cancelled',
     currentValue: 2000,
     roi: 0.0,
-    expectedPayout: '2025-06-11T23:30:00Z',
+    expectedPayout: '2025-06-06T21:00:00Z',
     riskLevel: 'medium',
   },
 ];
@@ -75,16 +87,14 @@ export default function InvestmentTable() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
     });
   };
 
@@ -107,7 +117,7 @@ export default function InvestmentTable() {
     }
   };
 
-  const handleAction = async (action: string, investment: any) => {
+  const handleAction = async (action: string, investment: InvestmentData) => {
     setIsLoading(true);
     try {
       // Simulate API call
@@ -120,7 +130,7 @@ export default function InvestmentTable() {
     }
   };
 
-  const columns = [
+  const columns: Column<InvestmentData>[] = [
     {
       Header: 'Tournament',
       accessor: 'tournament',
@@ -272,92 +282,98 @@ export default function InvestmentTable() {
   const totalROI = ((totalCurrentValue - totalInvested) / totalInvested) * 100;
 
   return (
-    <div className="rounded-lg bg-white shadow-card dark:bg-light-dark">
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              My Investments
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Track your tournament investments and returns
-            </p>
+    <div className="rounded-lg bg-white p-6 shadow-card dark:bg-light-dark">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          My Investments
+        </h2>
+        <div className="flex space-x-4 text-sm">
+          <div className="text-center">
+            <div className="text-gray-500 dark:text-gray-400">Total Invested</div>
+            <div className="font-semibold text-gray-900 dark:text-white">
+              {formatCurrency(totalInvested)}
+            </div>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Portfolio</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">
+          <div className="text-center">
+            <div className="text-gray-500 dark:text-gray-400">Current Value</div>
+            <div className="font-semibold text-gray-900 dark:text-white">
               {formatCurrency(totalCurrentValue)}
             </div>
+          </div>
+          <div className="text-center">
+            <div className="text-gray-500 dark:text-gray-400">Total ROI</div>
             <div className={cn(
-              'text-sm font-medium',
+              'font-semibold',
               totalROI > 0 ? 'text-green-500' : 
               totalROI < 0 ? 'text-red-500' : 'text-gray-500'
             )}>
-              {totalROI > 0 ? '+' : ''}{totalROI.toFixed(1)}% ROI
+              {totalROI > 0 ? '+' : ''}{totalROI.toFixed(1)}%
             </div>
           </div>
         </div>
       </div>
-      
-      <div className="overflow-x-auto">
-        <table {...getTableProps()} className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            {headerGroups.map((headerGroup, headerIndex) => (
-              <tr {...headerGroup.getHeaderGroupProps()} key={`header-${headerIndex}`}>
-                {headerGroup.headers.map((column, columnIndex) => (
-                  <th
-                    {...column.getHeaderProps(column.getSortByToggleProps())}
-                    key={`column-${columnIndex}`}
-                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>{column.render('Header')}</span>
-                      {column.isSorted ? (
-                        column.isSortedDesc ? (
-                          <ChevronDownIcon className="h-4 w-4" />
-                        ) : (
-                          <ChevronUpIcon className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ChevronUpIcon className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody {...getTableBodyProps()} className="divide-y divide-gray-200 dark:divide-gray-700">
-            {page.map((row, rowIndex) => {
-              prepareRow(row);
-              return (
-                <tr {...row.getRowProps()} key={`row-${rowIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  {row.cells.map((cell, cellIndex) => (
-                    <td
-                      {...cell.getCellProps()}
-                      key={`cell-${rowIndex}-${cellIndex}`}
-                      className="px-6 py-4 whitespace-nowrap text-sm"
+
+      <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto">
+          <table {...getTableProps()} className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              {headerGroups.map((headerGroup) => (
+                <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
+                  {headerGroup.headers.map((column) => (
+                    <th
+                      {...column.getHeaderProps(column.getSortByToggleProps())}
+                      key={column.id}
+                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
                     >
-                      {cell.render('Cell')}
-                    </td>
+                      <div className="flex items-center space-x-1">
+                        <span>{column.render('Header')}</span>
+                        {column.isSorted ? (
+                          column.isSortedDesc ? (
+                            <ChevronDownIcon className="h-4 w-4" />
+                          ) : (
+                            <ChevronUpIcon className="h-4 w-4" />
+                          )
+                        ) : (
+                          <ChevronUpIcon className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                        )}
+                      </div>
+                    </th>
                   ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody {...getTableBodyProps()} className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
+              {page.map((row) => {
+                prepareRow(row);
+                return (
+                  <tr {...row.getRowProps()} key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    {row.cells.map((cell) => (
+                      <td
+                        {...cell.getCellProps()}
+                        key={cell.column.id}
+                        className="whitespace-nowrap px-6 py-4 text-sm"
+                      >
+                        {cell.render('Cell')}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="mt-6 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-gray-700 dark:text-gray-300">
             Show
           </span>
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            className="rounded border border-gray-300 bg-white px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           >
             {[5, 10, 20, 30].map((size) => (
               <option key={size} value={size}>
@@ -365,34 +381,47 @@ export default function InvestmentTable() {
               </option>
             ))}
           </select>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-gray-700 dark:text-gray-300">
             entries
           </span>
         </div>
-        
+
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => previousPage()}
-            disabled={!canPreviousPage}
-            className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-gray-700 dark:text-gray-300">
             Page {pageIndex + 1} of {pageOptions.length}
           </span>
-          
-          <button
-            onClick={() => nextPage()}
-            disabled={!canNextPage}
-            className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            Next
-          </button>
+          <div className="flex space-x-1">
+            <button
+              onClick={() => gotoPage(0)}
+              disabled={!canPreviousPage}
+              className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              {'<<'}
+            </button>
+            <button
+              onClick={() => previousPage()}
+              disabled={!canPreviousPage}
+              className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              {'<'}
+            </button>
+            <button
+              onClick={() => nextPage()}
+              disabled={!canNextPage}
+              className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              {'>'}
+            </button>
+            <button
+              onClick={() => gotoPage(pageCount - 1)}
+              disabled={!canNextPage}
+              className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              {'>>'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

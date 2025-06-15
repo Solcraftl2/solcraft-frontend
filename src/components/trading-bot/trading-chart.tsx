@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import { useIsDarkMode } from '@/lib/hooks/use-is-dark-mode';
@@ -13,7 +11,7 @@ export default function TradingChart(props: any) {
     top: 0,
   });
   const { data, volumeData } = props;
-  const chartContainerRef = useRef<any>();
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   let container = chartContainerRef?.current;
 
   useEffect(() => {
@@ -26,159 +24,126 @@ export default function TradingChart(props: any) {
     // };
 
     // currency formatter
-    const currentLocale = window.navigator.languages[0];
-    const myPriceFormatter = Intl.NumberFormat(currentLocale, {
+    const currentLocale = window.navigator.languages[0] || 'en-US';
+    const myPriceFormatter = new Intl.NumberFormat(currentLocale, {
       style: 'currency',
       currency: 'USD',
     }).format;
 
     // create trading chart
-    const chart = createChart(chartContainerRef.current, {
+    const chart = createChart(container!, {
+      width: container?.clientWidth || 600,
+      height: container?.clientHeight || 400,
       layout: {
-        background: { color: 'transparent' },
-        textColor: '#4B5563',
+        background: {
+          type: 'solid',
+          color: isDarkMode ? '#1f2937' : '#ffffff',
+        },
+        textColor: isDarkMode ? '#d1d5db' : '#374151',
       },
       grid: {
         vertLines: {
-          color: 'transparent',
+          color: isDarkMode ? '#374151' : '#e5e7eb',
         },
         horzLines: {
-          color: isDarkMode ? '#334155' : '#E2E8F0',
+          color: isDarkMode ? '#374151' : '#e5e7eb',
         },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+      },
+      rightPriceScale: {
+        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
+      },
+      timeScale: {
+        borderColor: isDarkMode ? '#374151' : '#e5e7eb',
       },
       localization: {
         priceFormatter: myPriceFormatter,
       },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: {
-          width: 2,
-          color: '#10b981b5',
-          style: LineStyle.Solid,
-          labelBackgroundColor: '#10B981',
-        },
-        horzLine: {
-          color: '#10B981',
-          labelBackgroundColor: '#10B981',
-        },
-      },
-
-      width: container?.clientWidth,
-      height: container?.clientHeight,
-      autoSize: true,
     });
 
-    // Setting the border color for the vertical axis
-    chart.priceScale('right').applyOptions({
-      borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-    });
-
-    // Setting the border color for the horizontal axis
-    chart.timeScale().applyOptions({
-      borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-    });
-
-    // candle series styles
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#10B981',
-      downColor: '#EF4444',
+    // add candlestick series
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#10b981',
+      downColor: '#ef4444',
       borderDownColor: '#ef4444',
-      borderUpColor: '#10B981',
+      borderUpColor: '#10b981',
       wickDownColor: '#ef4444',
-      wickUpColor: '#10B981',
+      wickUpColor: '#10b981',
     });
 
-    // volume series style
+    // add volume series
     const volumeSeries = chart.addHistogramSeries({
+      color: '#6366f1',
       priceFormat: {
         type: 'volume',
       },
       priceScaleId: '',
-    });
-
-    // chart price scale options
-    chart.priceScale('').applyOptions({
       scaleMargins: {
         top: 0.8,
         bottom: 0,
       },
     });
 
-    // set chart data
-    candleSeries.setData(data);
-    volumeSeries.setData(volumeData);
-    chart.timeScale().fitContent();
+    // set data
+    if (data && data.length > 0) {
+      candlestickSeries.setData(data);
+    }
 
-    // tooltip default value
-    const toolTipWidth = 80;
-    const toolTipHeight = 80;
-    const toolTipMargin = 40;
+    if (volumeData && volumeData.length > 0) {
+      volumeSeries.setData(volumeData);
+    }
 
-    // update tooltip
+    // handle crosshair move
     chart.subscribeCrosshairMove((param) => {
       if (
         param.point === undefined ||
         !param.time ||
         param.point.x < 0 ||
-        param.point.x > container?.clientWidth ||
+        param.point.x > (container?.clientWidth || 0) ||
         param.point.y < 0 ||
-        param.point.y > container?.clientHeight
+        param.point.y > (container?.clientHeight || 0)
       ) {
         setTooltipPosition({ display: 'none', left: 0, top: 0 });
       } else {
-        const y = param.point.y;
-        let left = param.point.x + toolTipMargin;
-        if (left > container?.clientWidth - toolTipWidth) {
-          left = param.point.x - toolTipMargin - toolTipWidth;
+        const price = param.seriesPrices.get(candlestickSeries);
+        if (price) {
+          setTooltipPosition({
+            display: 'block',
+            left: param.point.x,
+            top: param.point.y,
+          });
         }
-
-        let top = y + toolTipMargin;
-        if (top > container?.clientHeight - toolTipHeight) {
-          top = y - toolTipHeight - toolTipMargin;
-        }
-
-        setTooltipPosition({ display: 'block', left: left, top: top });
       }
     });
 
-    // window.addEventListener('resize', handleResize);
-
+    // cleanup
     return () => {
-      // window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [
-    data,
-    volumeData,
-    isDarkMode,
-    container?.clientWidth,
-    container?.clientHeight,
-  ]);
+  }, [data, volumeData, isDarkMode, container]);
 
   return (
-    <div className="relative rounded-lg bg-white py-5 pe-0 pl-5 shadow-card dark:bg-light-dark 2xl:pl-8 3xl:h-full">
+    <div className="relative h-96 w-full">
+      <div ref={chartContainerRef} className="h-full w-full" />
       <div
-        ref={chartContainerRef}
-        className="h-[350px] w-full sm:h-[450px] 2xl:h-[550px] 3xl:h-[570px]"
-      />
-      <div
-        className="pointer-events-none absolute z-10 h-32 w-24 rounded-lg border border-gray-200 bg-white p-3 text-[#111827] shadow-main dark:border-gray-700 dark:bg-light-dark 3xl:w-28"
         style={{
-          left: `${tooltipPosition.left}px`,
-          top: `${tooltipPosition.top}px`,
-          display: `${tooltipPosition.display}`,
+          position: 'absolute',
+          display: tooltipPosition.display,
+          left: tooltipPosition.left,
+          top: tooltipPosition.top,
+          pointerEvents: 'none',
+          padding: '8px',
+          background: isDarkMode ? '#374151' : '#ffffff',
+          border: `1px solid ${isDarkMode ? '#4b5563' : '#e5e7eb'}`,
+          borderRadius: '4px',
+          fontSize: '12px',
+          color: isDarkMode ? '#d1d5db' : '#374151',
+          zIndex: 1000,
         }}
       >
-        <h3 className="text-sm font-medium text-[#111827] dark:text-gray-200">
-          ETH/USDT
-        </h3>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-          25.521M
-        </p>
-        <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
-          24H High
-        </p>
-        <p className="mt-1 text-xs font-normal text-[#10B981]">30,430.86</p>
+        Trading data tooltip
       </div>
     </div>
   );

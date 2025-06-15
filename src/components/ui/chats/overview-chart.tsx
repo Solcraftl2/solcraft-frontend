@@ -1,28 +1,35 @@
-import cn from '@/utils/cn';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useLayout } from '@/lib/hooks/use-layout';
-import { LAYOUT_OPTIONS } from '@/lib/constants';
+import cn from '@/utils/cn';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 const data = [
   {
     name: 'Page A',
-    uv: 1200,
-    pv: 800,
+    uv: 4000,
+    pv: 2400,
   },
   {
     name: 'Page B',
-    uv: 2600,
-    pv: 100,
+    uv: 3000,
+    pv: 1398,
   },
   {
     name: 'Page C',
-    uv: 1900,
-    pv: 1600,
+    uv: 2000,
+    pv: 9800,
   },
   {
     name: 'Page D',
-    uv: 2280,
-    pv: 1508,
+    uv: 2780,
+    pv: 3908,
   },
   {
     name: 'Page E',
@@ -34,18 +41,15 @@ const data = [
     uv: 1690,
     pv: 3000,
   },
-  {
-    name: 'Page G',
-    uv: 2590,
-    pv: 4500,
-  },
 ];
 
 interface Props {
   chartWrapperClass?: string;
+  title?: string;
+  description?: string;
 }
 
-export default function OverviewChart({ chartWrapperClass }: Props) {
+export default function OverviewChart({ chartWrapperClass, title, description }: Props) {
   const { layout } = useLayout();
 
   return (
@@ -53,34 +57,51 @@ export default function OverviewChart({ chartWrapperClass }: Props) {
       className={cn(
         'rounded-lg bg-light-dark p-6 text-white shadow-card sm:p-8',
         {
-          'w-full lg:w-[49%]': layout === LAYOUT_OPTIONS.RETRO,
+          'w-full lg:w-[49%]': layout === 'retro',
         },
+        chartWrapperClass
       )}
     >
-      <h3 className="text-xl font-medium tracking-tighter text-white sm:text-3xl">
-        74.8%
-      </h3>
-      <p className="mt-2 mb-1 text-xs font-medium text-gray-400 sm:text-sm">
-        Compare to $1,812 last week
-      </p>
-      <div className={cn('h-60 w-full', chartWrapperClass)}>
+      <div className="mb-3 flex items-center justify-between">
+        <h4 className="text-sm font-medium uppercase tracking-wider text-gray-300 sm:text-base">
+          {title || 'Overview'}
+        </h4>
+      </div>
+      {description && (
+        <div className="mb-4 text-xs text-gray-400 sm:text-sm">
+          {description}
+        </div>
+      )}
+      <div className="h-64 w-full sm:h-72 lg:h-64 xl:h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <Line
-              type="natural"
-              dataKey="pv"
-              stroke="#1E40AF"
-              strokeWidth={4}
-              dot={false}
-            />
-            <Line
-              type="natural"
+          <AreaChart
+            data={data}
+            margin={{
+              top: 5,
+              right: 30,
+              left: 20,
+              bottom: 5,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Area
+              type="monotone"
               dataKey="uv"
-              stroke="#374151"
-              strokeWidth={4}
-              dot={false}
+              stackId="1"
+              stroke="#8884d8"
+              fill="#8884d8"
             />
-          </LineChart>
+            <Area
+              type="monotone"
+              dataKey="pv"
+              stackId="1"
+              stroke="#82ca9d"
+              fill="#82ca9d"
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

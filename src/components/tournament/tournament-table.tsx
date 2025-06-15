@@ -1,11 +1,27 @@
-'use client';
-
 import { useState } from 'react';
-import { useTable, useSortBy, usePagination } from 'react-table';
+import { useTable, useSortBy, usePagination, Column } from 'react-table';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import cn from '@/utils/cn';
 
-const tournamentData = [
+// Define the tournament data type
+interface TournamentData {
+  id: number;
+  name: string;
+  organizer: string;
+  buyIn: number;
+  prizePool: number;
+  startTime: string;
+  status: string;
+  participants: number;
+  maxParticipants: number;
+  investmentPool: number;
+  minInvestment: number;
+  expectedROI: number;
+  riskLevel: string;
+  organizerRating: number;
+}
+
+const tournamentData: TournamentData[] = [
   {
     id: 1,
     name: 'Sunday Million',
@@ -48,7 +64,7 @@ const tournamentData = [
     status: 'live',
     participants: 1800,
     maxParticipants: 2000,
-    investmentPool: 75000,
+    investmentPool: 50000,
     minInvestment: 50,
     expectedROI: 12.8,
     riskLevel: 'low',
@@ -57,7 +73,7 @@ const tournamentData = [
   {
     id: 4,
     name: 'Micro Stakes Marathon',
-    organizer: 'MicroMaster',
+    organizer: 'BudgetBeast',
     buyIn: 11,
     prizePool: 25000,
     startTime: '2025-06-09T16:00:00Z',
@@ -68,23 +84,23 @@ const tournamentData = [
     minInvestment: 25,
     expectedROI: 8.5,
     riskLevel: 'low',
-    organizerRating: 4.4,
+    organizerRating: 4.3,
   },
   {
     id: 5,
-    name: 'Bounty Hunter Special',
-    organizer: 'BountyHunter',
-    buyIn: 320,
-    prizePool: 500000,
-    startTime: '2025-06-11T21:00:00Z',
-    status: 'upcoming',
-    participants: 1500,
-    maxParticipants: 1600,
-    investmentPool: 120000,
-    minInvestment: 150,
-    expectedROI: 22.1,
-    riskLevel: 'medium',
-    organizerRating: 4.7,
+    name: 'Elite Invitational',
+    organizer: 'ProCircuit',
+    buyIn: 25000,
+    prizePool: 5000000,
+    startTime: '2025-06-05T20:00:00Z',
+    status: 'completed',
+    participants: 200,
+    maxParticipants: 200,
+    investmentPool: 1000000,
+    minInvestment: 2000,
+    expectedROI: 35.7,
+    riskLevel: 'high',
+    organizerRating: 5.0,
   },
 ];
 
@@ -96,6 +112,15 @@ export default function TournamentTable() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const getRiskColor = (risk: string) => {
@@ -116,7 +141,7 @@ export default function TournamentTable() {
     }
   };
 
-  const columns = [
+  const columns: Column<TournamentData>[] = [
     {
       Header: 'Tournament',
       accessor: 'name',
@@ -146,6 +171,15 @@ export default function TournamentTable() {
       Cell: ({ value }: any) => (
         <span className="font-medium text-gray-900 dark:text-white">
           {formatCurrency(value)}
+        </span>
+      ),
+    },
+    {
+      Header: 'Start Time',
+      accessor: 'startTime',
+      Cell: ({ value }: any) => (
+        <span className="text-gray-900 dark:text-white">
+          {formatDate(value)}
         </span>
       ),
     },
@@ -252,12 +286,11 @@ export default function TournamentTable() {
       <div className="overflow-x-auto">
         <table {...getTableProps()} className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-800">
-            {headerGroups.map((headerGroup, headerIndex) => (
-              <tr {...headerGroup.getHeaderGroupProps()} key={`header-${headerIndex}`}>
-                {headerGroup.headers.map((column, columnIndex) => (
+            {headerGroups.map((headerGroup) => (
+              <tr {...headerGroup.getHeaderGroupProps()}>
+                {headerGroup.headers.map((column) => (
                   <th
                     {...column.getHeaderProps(column.getSortByToggleProps())}
-                    key={`column-${columnIndex}`}
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
                   >
                     <div className="flex items-center space-x-1">
@@ -278,16 +311,12 @@ export default function TournamentTable() {
             ))}
           </thead>
           <tbody {...getTableBodyProps()} className="divide-y divide-gray-200 dark:divide-gray-700">
-            {page.map((row, rowIndex) => {
+            {page.map((row) => {
               prepareRow(row);
               return (
-                <tr {...row.getRowProps()} key={`row-${rowIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  {row.cells.map((cell, cellIndex) => (
-                    <td
-                      {...cell.getCellProps()}
-                      key={`cell-${rowIndex}-${cellIndex}`}
-                      className="px-6 py-4 whitespace-nowrap text-sm"
-                    >
+                <tr {...row.getRowProps()} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  {row.cells.map((cell) => (
+                    <td {...cell.getCellProps()} className="px-6 py-4 whitespace-nowrap">
                       {cell.render('Cell')}
                     </td>
                   ))}
@@ -301,48 +330,53 @@ export default function TournamentTable() {
       {/* Pagination */}
       <div className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Show
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            Page {pageIndex + 1} of {pageOptions.length}
           </span>
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
             className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           >
-            {[5, 10, 20, 30].map((size) => (
-              <option key={size} value={size}>
-                {size}
+            {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+              <option key={pageSize} value={pageSize}>
+                Show {pageSize}
               </option>
             ))}
           </select>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            entries
-          </span>
         </div>
         
         <div className="flex items-center space-x-2">
           <button
+            onClick={() => gotoPage(0)}
+            disabled={!canPreviousPage}
+            className="rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            {'<<'}
+          </button>
+          <button
             onClick={() => previousPage()}
             disabled={!canPreviousPage}
-            className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
+            className="rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Previous
+            {'<'}
           </button>
-          
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Page {pageIndex + 1} of {pageOptions.length}
-          </span>
-          
           <button
             onClick={() => nextPage()}
             disabled={!canNextPage}
-            className="rounded px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
+            className="rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Next
+            {'>'}
+          </button>
+          <button
+            onClick={() => gotoPage(pageCount - 1)}
+            disabled={!canNextPage}
+            className="rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            {'>>'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
